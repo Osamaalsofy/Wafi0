@@ -1,0 +1,25 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".*\\.integration-spec\\.ts$",
+  "extensionsToTreatAsEsm": [".ts"],
+  "moduleNameMapper": { "^(\\.{1,2}/.*)\\.js$": "$1" },
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "useESM": true,
+        "tsconfig": {
+          "module": "ES2022",
+          "moduleResolution": "bundler",
+          "target": "ES2023",
+          "isolatedModules": true,
+          "esModuleInterop": true,
+          "experimentalDecorators": true,
+          "emitDecoratorMetadata": true
+        }
+      }
+    ]
+  }
+}

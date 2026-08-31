@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+coverage
+generated
+pnpm-lock.yaml
+*.zip
+apps/web/next-env.d.ts
+.next-e2e
+playwright-report
+test-results
+.codex-output
+*.pptx
+*.pptx.inspect.ndjson
+docs/production-business-decisions-v1.md

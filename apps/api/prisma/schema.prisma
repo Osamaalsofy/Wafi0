@@ -1,0 +1,1417 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum GeofenceType {
+  POINT
+  POLYGON
+  MULTIPOLYGON
+}
+
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.Char(2)
+  nameAr    String   @map("name_ar") @db.VarChar(120)
+  nameEn    String   @map("name_en") @db.VarChar(120)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  regions GeographicRegion[]
+
+  @@index([isActive])
+  @@map("countries")
+}
+
+model GeographicRegion {
+  id        String   @id @default(uuid()) @db.Uuid
+  countryId String   @map("country_id") @db.Uuid
+  code      String   @unique @db.VarChar(32)
+  nameAr    String   @map("name_ar") @db.VarChar(160)
+  nameEn    String   @map("name_en") @db.VarChar(160)
+  latitude  Decimal  @db.Decimal(9, 6)
+  longitude Decimal  @db.Decimal(9, 6)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country      Country       @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  governorates Governorate[]
+
+  @@index([countryId, isActive])
+  @@index([nameAr])
+  @@index([nameEn])
+  @@map("geographic_regions")
+}
+
+model Governorate {
+  id               String       @id @default(uuid()) @db.Uuid
+  regionId         String       @map("region_id") @db.Uuid
+  code             String       @unique @db.VarChar(80)
+  nameAr           String       @map("name_ar") @db.VarChar(160)
+  nameEn           String       @map("name_en") @db.VarChar(160)
+  latitude         Decimal      @db.Decimal(9, 6)
+  longitude        Decimal      @db.Decimal(9, 6)
+  timezone         String       @default("Asia/Riyadh") @db.VarChar(80)
+  geofenceType     GeofenceType @default(POINT) @map("geofence_type")
+  geofence         Json?
+  coordinateSource String       @map("coordinate_source") @db.VarChar(120)
+  isMajor          Boolean      @default(false) @map("is_major")
+  isActive         Boolean      @default(true) @map("is_active")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  region     GeographicRegion @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  warehouses Warehouse[]
+  branches   Branch[]
+
+  @@index([regionId, isActive])
+  @@index([nameAr])
+  @@index([nameEn])
+  @@index([isActive, isMajor])
+  @@map("governorates")
+}
+
+enum ScopeType {
+  ORGANIZATION
+  CLIENT
+  CARRIER
+  WAREHOUSE
+  BRANCH
+}
+
+enum MissionStatus {
+  DRAFT
+  ASSIGNED
+  WAITING_FOR_VEHICLE
+  VEHICLE_ARRIVED
+  LOADING
+  LOADED
+  DEPARTED
+  IN_TRANSIT
+  AT_STOP
+  DELIVERING
+  DELIVERED
+  OPERATIONALLY_CLOSED
+  ACCOUNTING_READY
+  CLOSED
+  CANCELLED
+}
+
+enum MissionStopStatus {
+  PENDING
+  ARRIVED
+  UNLOADING
+  COMPLETED
+  CANCELLED
+}
+
+enum DocumentType {
+  WAYBILL
+  GATE_PASS
+  POD
+  RECEIVER_SIGNATURE
+  RECEIVER_STAMP
+  SHORTAGE_PROOF
+  RETURN_PROOF
+  OTHER
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum MalwareScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+}
+
+enum ClosureStage {
+  OPERATIONAL_CLOSURE
+  ACCOUNTING_READINESS
+}
+
+enum ClosurePolicyStatus {
+  DRAFT
+  APPROVED
+  ACTIVE
+  RETIRED
+}
+
+enum DocumentRequirementScope {
+  MISSION
+  EACH_STOP
+}
+
+enum RuleScopeType {
+  ORGANIZATION
+  CLIENT
+  WAREHOUSE
+  CARRIER
+  CONTRACT
+  ROUTE
+  DRIVER
+}
+
+enum ExceptionSeverity {
+  INFO
+  WARNING
+  HIGH
+  CRITICAL
+}
+
+enum ExceptionStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ActionStatus {
+  OPEN
+  COMPLETED
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+enum AlertDeliveryOutcome {
+  SENT
+  FAILED
+}
+
+enum KpiResultStatus {
+  DRAFT
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum KpiPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ContractCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ANNUAL
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  TERMINATED
+}
+
+enum QuantityUnit {
+  UNIT
+  KG
+  TON
+  LITER
+  PALLET
+  CARTON
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum MissionAssignmentKind {
+  INITIAL
+  DRIVER_REPLACEMENT
+  VEHICLE_REPLACEMENT
+  REASSIGNMENT
+}
+
+enum ContractPartyType {
+  ORGANIZATION
+  CLIENT
+  CARRIER
+  DRIVER
+}
+
+model Organization {
+  id        String       @id @default(uuid()) @db.Uuid
+  code      String       @unique @db.VarChar(64)
+  name      String       @db.VarChar(160)
+  status    RecordStatus @default(ACTIVE)
+  settings  Json         @default("{}")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users                 User[]
+  roles                 Role[]
+  auditLogs             AuditLog[]
+  clients               Client[]
+  carriers              Carrier[]
+  missions              Mission[]
+  missionStops          MissionStop[]
+  missionEvents         MissionEvent[]
+  documents             Document[]
+  closurePolicies       ClosurePolicy[]
+  ruleConfigurations    RuleConfiguration[]
+  kpiConfigurations     KpiConfiguration[]
+  kpiFactSnapshots      KpiFactSnapshot[]
+  kpiMissionFacts       KpiMissionFact[]
+  kpiResults            KpiResult[]
+  kpiMissionResults     KpiMissionResult[]
+  exceptions            OperationalException[]
+  rootCauses            RootCause[]
+  decisions             Decision[]
+  actions               CorrectiveAction[]
+  alerts                Alert[]
+  alertDeliveryAttempts AlertDeliveryAttempt[]
+  alertEscalations      AlertEscalation[]
+  contracts             OperationalContract[]
+  routes                OperationalRoute[]
+  rootCauseCategories   RootCauseCategory[]
+  missionAssignments    MissionAssignment[]
+  supportTickets        SupportTicket[]
+  notifications         PortalNotification[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  email          String       @db.VarChar(254)
+  name           String       @db.VarChar(160)
+  passwordHash   String       @map("password_hash")
+  status         RecordStatus @default(ACTIVE)
+  lastLoginAt    DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization               Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  roleAssignments            UserRole[]
+  refreshSessions            RefreshSession[]
+  auditLogs                  AuditLog[]             @relation("AuditActor")
+  missionEvents              MissionEvent[]         @relation("MissionEventActor")
+  uploadedDocuments          Document[]             @relation("DocumentUploader")
+  verifiedDocuments          Document[]             @relation("DocumentVerifier")
+  activatedClosurePolicies   ClosurePolicy[]
+  authoredClosurePolicies    ClosurePolicy[]        @relation("ClosurePolicyAuthor")
+  approvedClosurePolicies    ClosurePolicy[]        @relation("ClosurePolicyApprover")
+  createdRuleConfigurations  RuleConfiguration[]    @relation("RuleConfigurationCreator")
+  createdKpiConfigurations   KpiConfiguration[]     @relation("KpiConfigurationCreator")
+  createdKpiFactSnapshots    KpiFactSnapshot[]      @relation("KpiFactSnapshotCreator")
+  createdKpiResults          KpiResult[]            @relation("KpiResultCreator")
+  publishedKpiResults        KpiResult[]            @relation("KpiResultPublisher")
+  ownedRuleConfigurations    RuleConfiguration[]    @relation("RuleConfigurationOwner")
+  ownedExceptions            OperationalException[] @relation("ExceptionOwner")
+  confirmedRootCauses        RootCause[]            @relation("RootCauseConfirmer")
+  madeDecisions              Decision[]             @relation("DecisionMaker")
+  ownedActions               CorrectiveAction[]     @relation("ActionOwner")
+  completedActions           CorrectiveAction[]     @relation("ActionCompleter")
+  alerts                     Alert[]
+  alertEscalations           AlertEscalation[]
+  createdContracts           OperationalContract[]
+  createdRoutes              OperationalRoute[]
+  driver                     Driver?
+  supportMessages            SupportMessage[]
+  assignedSupportTickets     SupportTicket[]        @relation("SupportTicketAssignee")
+  supportAssignmentsMade     SupportAssignment[]    @relation("SupportAssignmentActor")
+  supportAssignmentsReceived SupportAssignment[]    @relation("SupportAssignmentAssignee")
+  portalNotifications        PortalNotification[]
+
+  @@unique([organizationId, email])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@map("users")
+}
+
+model Role {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String   @db.VarChar(80)
+  name           String   @db.VarChar(120)
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  permissions  RolePermission[]
+  assignments  UserRole[]
+
+  @@unique([organizationId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique @db.VarChar(120)
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  roleId    String    @map("role_id") @db.Uuid
+  scopeType ScopeType @map("scope_type")
+  scopeId   String    @map("scope_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, scopeType, scopeId])
+  @@index([userId, scopeType, scopeId])
+  @@map("user_roles")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("refresh_sessions")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  entityType     String   @map("entity_type") @db.VarChar(80)
+  entityId       String   @map("entity_id") @db.Uuid
+  action         String   @db.VarChar(120)
+  oldValues      Json?    @map("old_values")
+  newValues      Json?    @map("new_values")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor        User?        @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Client {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(64)
+  name           String       @db.VarChar(160)
+  status         RecordStatus @default(ACTIVE)
+  settings       Json         @default("{}")
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  warehouses      Warehouse[]
+  drivers         Driver[]
+  branches        Branch[]
+  missions        Mission[]
+  closurePolicies ClosurePolicy[]
+  routes          OperationalRoute[]
+  supportTickets  SupportTicket[]
+  notifications   PortalNotification[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+  @@map("clients")
+}
+
+model OperationalContract {
+  id                            String          @id @default(uuid()) @db.Uuid
+  organizationId                String          @map("organization_id") @db.Uuid
+  code                          String          @db.VarChar(80)
+  name                          String          @db.VarChar(160)
+  cadence                       ContractCadence
+  status                        ContractStatus  @default(DRAFT)
+  effectiveFrom                 DateTime        @map("effective_from") @db.Timestamptz(6)
+  effectiveTo                   DateTime        @map("effective_to") @db.Timestamptz(6)
+  createdByUserId               String          @map("created_by_user_id") @db.Uuid
+  createdAt                     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  temperatureMonitoringRequired Boolean         @default(false) @map("temperature_monitoring_required")
+  minimumTemperature            Decimal?        @map("minimum_temperature") @db.Decimal(7, 2)
+  maximumTemperature            Decimal?        @map("maximum_temperature") @db.Decimal(7, 2)
+  temperatureGraceMinutes       Int?            @map("temperature_grace_minutes")
+  temperatureSensorReference    String?         @map("temperature_sensor_reference") @db.VarChar(160)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    User            @relation(fields: [createdByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  parties      ContractParty[]
+  missions     Mission[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status, effectiveFrom, effectiveTo])
+  @@map("operational_contracts")
+}
+
+model ContractParty {
+  id             String            @id @default(uuid()) @db.Uuid
+  contractId     String            @map("contract_id") @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  partyType      ContractPartyType @map("party_type")
+  partyId        String            @map("party_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract OperationalContract @relation(fields: [contractId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([contractId, partyType, partyId])
+  @@index([organizationId, partyType, partyId])
+  @@map("contract_parties")
+}
+
+model OperationalRoute {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  clientId        String       @map("client_id") @db.Uuid
+  code            String       @db.VarChar(80)
+  name            String       @db.VarChar(160)
+  cityRegion      String       @map("city_region") @db.VarChar(160)
+  timeZone        String       @map("time_zone") @db.VarChar(80)
+  status          RecordStatus @default(ACTIVE)
+  createdByUserId String       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client       Client                 @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  createdBy    User                   @relation(fields: [createdByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  stops        RouteStop[]
+  missions     Mission[]
+  exceptions   OperationalException[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([clientId, status])
+  @@map("operational_routes")
+}
+
+model RouteStop {
+  id             String   @id @default(uuid()) @db.Uuid
+  routeId        String   @map("route_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  sequence       Int
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  route  OperationalRoute @relation(fields: [routeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch Branch           @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([routeId, sequence])
+  @@index([organizationId, branchId])
+  @@map("route_stops")
+}
+
+model Carrier {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String       @db.VarChar(64)
+  name           String       @db.VarChar(160)
+  status         RecordStatus @default(ACTIVE)
+  settings       Json         @default("{}")
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  drivers      Driver[]
+  vehicles     Vehicle[]
+  missions     Mission[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+  @@map("carriers")
+}
+
+model Warehouse {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  clientId       String       @map("client_id") @db.Uuid
+  code           String       @db.VarChar(64)
+  name           String       @db.VarChar(160)
+  address        String?
+  latitude       Decimal?     @db.Decimal(9, 6)
+  longitude      Decimal?     @db.Decimal(9, 6)
+  governorateId  String?      @map("governorate_id") @db.Uuid
+  status         RecordStatus @default(ACTIVE)
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client      Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  governorate Governorate? @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  missions    Mission[]
+
+  @@unique([clientId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([clientId, status])
+  @@index([governorateId])
+  @@map("warehouses")
+}
+
+model Branch {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  clientId       String       @map("client_id") @db.Uuid
+  code           String       @db.VarChar(64)
+  name           String       @db.VarChar(160)
+  address        String?
+  latitude       Decimal?     @db.Decimal(9, 6)
+  longitude      Decimal?     @db.Decimal(9, 6)
+  governorateId  String?      @map("governorate_id") @db.Uuid
+  status         RecordStatus @default(ACTIVE)
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client       Client        @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  governorate  Governorate?  @relation(fields: [governorateId], references: [id], onDelete: Restrict)
+  missionStops MissionStop[]
+  routeStops   RouteStop[]
+
+  @@unique([clientId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([clientId, status])
+  @@index([governorateId])
+  @@map("branches")
+}
+
+model Driver {
+  id                     String       @id @default(uuid()) @db.Uuid
+  organizationId         String       @map("organization_id") @db.Uuid
+  userId                 String?      @unique @map("user_id") @db.Uuid
+  carrierId              String       @map("carrier_id") @db.Uuid
+  clientId               String?      @map("client_id") @db.Uuid
+  trackingNumber         String?      @map("tracking_number") @db.VarChar(80)
+  nationalId             String?      @map("national_id") @db.VarChar(20)
+  profilePhotoDocumentId String?      @map("profile_photo_document_id") @db.Uuid
+  name                   String       @db.VarChar(160)
+  phone                  String?      @db.VarChar(32)
+  licenseNo              String?      @map("license_no") @db.VarChar(80)
+  status                 RecordStatus @default(ACTIVE)
+  archivedAt             DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  carrier           Carrier             @relation(fields: [carrierId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client            Client?             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  user              User?               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  missions          Mission[]
+  assignmentHistory MissionAssignment[]
+  supportTickets    SupportTicket[]
+
+  @@unique([carrierId, licenseNo])
+  @@unique([organizationId, trackingNumber])
+  @@unique([organizationId, nationalId])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([carrierId, status])
+  @@index([clientId, status])
+  @@index([organizationId, name])
+  @@map("drivers")
+}
+
+model Vehicle {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  carrierId      String       @map("carrier_id") @db.Uuid
+  plateNo        String       @map("plate_no") @db.VarChar(40)
+  vehicleType    String?      @map("vehicle_type") @db.VarChar(80)
+  capacity       Decimal?     @db.Decimal(14, 3)
+  capacityUnit   String?      @map("capacity_unit") @db.VarChar(32)
+  status         RecordStatus @default(ACTIVE)
+  archivedAt     DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  carrier           Carrier             @relation(fields: [carrierId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  missions          Mission[]
+  assignmentHistory MissionAssignment[]
+
+  @@unique([carrierId, plateNo])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([carrierId, status])
+  @@index([organizationId, plateNo])
+  @@map("vehicles")
+}
+
+model Mission {
+  id                   String        @id @default(uuid()) @db.Uuid
+  organizationId       String        @map("organization_id") @db.Uuid
+  missionNo            String        @map("mission_no") @db.VarChar(80)
+  clientId             String        @map("client_id") @db.Uuid
+  contractId           String?       @map("contract_id") @db.Uuid
+  routeId              String?       @map("route_id") @db.Uuid
+  warehouseId          String        @map("warehouse_id") @db.Uuid
+  carrierId            String?       @map("carrier_id") @db.Uuid
+  vehicleId            String?       @map("vehicle_id") @db.Uuid
+  driverId             String?       @map("driver_id") @db.Uuid
+  cargoType            String?       @map("cargo_type") @db.VarChar(120)
+  status               MissionStatus @default(DRAFT)
+  scheduledLoadingAt   DateTime?     @map("scheduled_loading_at") @db.Timestamptz(6)
+  actualLoadingAt      DateTime?     @map("actual_loading_at") @db.Timestamptz(6)
+  scheduledDepartureAt DateTime?     @map("scheduled_departure_at") @db.Timestamptz(6)
+  actualDepartureAt    DateTime?     @map("actual_departure_at") @db.Timestamptz(6)
+  notes                String?
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization               Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client                     Client                 @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  contract                   OperationalContract?   @relation(fields: [contractId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  route                      OperationalRoute?      @relation(fields: [routeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  warehouse                  Warehouse              @relation(fields: [warehouseId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  carrier                    Carrier?               @relation(fields: [carrierId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vehicle                    Vehicle?               @relation(fields: [vehicleId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  driver                     Driver?                @relation(fields: [driverId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  stops                      MissionStop[]
+  events                     MissionEvent[]
+  documents                  Document[]
+  exceptions                 OperationalException[]
+  kpiFacts                   KpiMissionFact[]
+  kpiResults                 KpiMissionResult[]
+  operationalClosurePolicyId String?                @map("operational_closure_policy_id") @db.Uuid
+  accountingClosurePolicyId  String?                @map("accounting_closure_policy_id") @db.Uuid
+  operationalClosurePolicy   ClosurePolicy?         @relation("MissionOperationalClosurePolicy", fields: [operationalClosurePolicyId], references: [id], onDelete: Restrict)
+  accountingClosurePolicy    ClosurePolicy?         @relation("MissionAccountingClosurePolicy", fields: [accountingClosurePolicyId], references: [id], onDelete: Restrict)
+  assignmentHistory          MissionAssignment[]
+  supportTickets             SupportTicket[]
+  notifications              PortalNotification[]
+
+  @@unique([organizationId, missionNo])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, scheduledLoadingAt])
+  @@index([clientId, status])
+  @@index([contractId, status])
+  @@index([routeId, status])
+  @@index([warehouseId, status])
+  @@index([carrierId, status])
+  @@map("missions")
+}
+
+model MissionStop {
+  id                   String            @id @default(uuid()) @db.Uuid
+  organizationId       String            @map("organization_id") @db.Uuid
+  missionId            String            @map("mission_id") @db.Uuid
+  branchId             String            @map("branch_id") @db.Uuid
+  sequence             Int
+  expectedArrival      DateTime?         @map("expected_arrival") @db.Timestamptz(6)
+  actualArrival        DateTime?         @map("actual_arrival") @db.Timestamptz(6)
+  unloadingStartedAt   DateTime?         @map("unloading_started_at") @db.Timestamptz(6)
+  unloadingCompletedAt DateTime?         @map("unloading_completed_at") @db.Timestamptz(6)
+  expectedQty          Decimal?          @map("expected_qty") @db.Decimal(14, 3)
+  receivedQty          Decimal?          @map("received_qty") @db.Decimal(14, 3)
+  actualQty            Decimal?          @map("actual_qty") @db.Decimal(14, 3)
+  rejectedQty          Decimal?          @map("rejected_qty") @db.Decimal(14, 3)
+  shortageQty          Decimal?          @map("shortage_qty") @db.Decimal(14, 3)
+  quantityUnit         QuantityUnit?     @map("quantity_unit")
+  status               MissionStopStatus @default(PENDING)
+  notes                String?
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission        Mission                @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  branch         Branch                 @relation(fields: [branchId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  events         MissionEvent[]
+  documents      Document[]
+  exceptions     OperationalException[]
+  exceptionLinks ExceptionStop[]
+
+  @@unique([missionId, sequence])
+  @@unique([id, organizationId])
+  @@index([organizationId, status])
+  @@index([branchId, status])
+  @@map("mission_stops")
+}
+
+model MissionEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  missionId      String   @map("mission_id") @db.Uuid
+  stopId         String?  @map("stop_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  eventType      String   @map("event_type") @db.VarChar(120)
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  source         String   @default("API") @db.VarChar(40)
+  payload        Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission      Mission      @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  stop         MissionStop? @relation(fields: [stopId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  actor        User?        @relation("MissionEventActor", fields: [actorUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([missionId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+  @@map("mission_events")
+}
+
+model Document {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  organizationId     String                     @map("organization_id") @db.Uuid
+  missionId          String                     @map("mission_id") @db.Uuid
+  stopId             String?                    @map("stop_id") @db.Uuid
+  type               DocumentType
+  storageKey         String                     @unique @map("storage_key") @db.VarChar(500)
+  originalFileName   String                     @map("original_file_name") @db.VarChar(255)
+  mimeType           String                     @map("mime_type") @db.VarChar(120)
+  sizeBytes          Int                        @map("size_bytes")
+  checksumSha256     String?                    @map("checksum_sha256") @db.Char(64)
+  version            Int                        @default(1)
+  replacesDocumentId String?                    @map("replaces_document_id") @db.Uuid
+  retentionUntil     DateTime?                  @map("retention_until") @db.Date
+  malwareScanStatus  MalwareScanStatus          @default(PENDING) @map("malware_scan_status")
+  malwareScannedAt   DateTime?                  @map("malware_scanned_at") @db.Timestamptz(6)
+  verificationStatus DocumentVerificationStatus @default(PENDING) @map("verification_status")
+  uploadedByUserId   String                     @map("uploaded_by_user_id") @db.Uuid
+  verifiedByUserId   String?                    @map("verified_by_user_id") @db.Uuid
+  verifiedAt         DateTime?                  @map("verified_at") @db.Timestamptz(6)
+  verificationNotes  String?                    @map("verification_notes") @db.VarChar(1000)
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission           Mission             @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  stop              MissionStop?        @relation(fields: [stopId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  uploadedBy        User                @relation("DocumentUploader", fields: [uploadedByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  verifiedBy        User?               @relation("DocumentVerifier", fields: [verifiedByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  exceptionEvidence ExceptionEvidence[]
+  replaces          Document?           @relation("DocumentReplacement", fields: [replacesDocumentId], references: [id], onDelete: Restrict)
+  replacements      Document[]          @relation("DocumentReplacement")
+  supportMessages   SupportMessage[]
+
+  @@index([organizationId, createdAt])
+  @@index([missionId, type])
+  @@index([stopId, type])
+  @@index([organizationId, verificationStatus])
+  @@index([replacesDocumentId])
+  @@index([organizationId, malwareScanStatus])
+  @@map("documents")
+}
+
+model MissionAssignment {
+  id               String                @id @default(uuid()) @db.Uuid
+  organizationId   String                @map("organization_id") @db.Uuid
+  missionId        String                @map("mission_id") @db.Uuid
+  carrierId        String                @map("carrier_id") @db.Uuid
+  vehicleId        String                @map("vehicle_id") @db.Uuid
+  driverId         String                @map("driver_id") @db.Uuid
+  kind             MissionAssignmentKind @default(INITIAL)
+  reason           String?               @db.VarChar(1000)
+  assignedByUserId String                @map("assigned_by_user_id") @db.Uuid
+  assignedAt       DateTime              @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  endedAt          DateTime?             @map("ended_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission      Mission      @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  driver       Driver       @relation(fields: [driverId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  vehicle      Vehicle      @relation(fields: [vehicleId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([missionId, assignedAt])
+  @@index([organizationId, driverId, endedAt])
+  @@map("mission_assignments")
+}
+
+model SupportTicket {
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @map("organization_id") @db.Uuid
+  missionId        String              @map("mission_id") @db.Uuid
+  clientId         String              @map("client_id") @db.Uuid
+  driverId         String              @map("driver_id") @db.Uuid
+  subject          String              @db.VarChar(200)
+  status           SupportTicketStatus @default(OPEN)
+  assignedToUserId String?             @map("assigned_to_user_id") @db.Uuid
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission           Mission             @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  client            Client              @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  driver            Driver              @relation(fields: [driverId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  assignedTo        User?               @relation("SupportTicketAssignee", fields: [assignedToUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  messages          SupportMessage[]
+  assignmentHistory SupportAssignment[]
+
+  @@index([organizationId, status, updatedAt])
+  @@index([clientId, updatedAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id                   String        @id @default(uuid()) @db.Uuid
+  ticketId             String        @map("ticket_id") @db.Uuid
+  authorUserId         String        @map("author_user_id") @db.Uuid
+  body                 String
+  internalOnly         Boolean       @default(false) @map("internal_only")
+  attachmentDocumentId String?       @map("attachment_document_id") @db.Uuid
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  ticket               SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  author               User          @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  attachment           Document?     @relation(fields: [attachmentDocumentId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
+}
+
+model SupportAssignment {
+  id               String        @id @default(uuid()) @db.Uuid
+  ticketId         String        @map("ticket_id") @db.Uuid
+  assignedToUserId String        @map("assigned_to_user_id") @db.Uuid
+  assignedByUserId String        @map("assigned_by_user_id") @db.Uuid
+  reason           String?       @db.VarChar(1000)
+  assignedAt       DateTime      @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  endedAt          DateTime?     @map("ended_at") @db.Timestamptz(6)
+  ticket           SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  assignedTo       User          @relation("SupportAssignmentAssignee", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+  assignedBy       User          @relation("SupportAssignmentActor", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, assignedAt])
+  @@map("support_assignments")
+}
+
+model PortalNotification {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  clientId       String       @map("client_id") @db.Uuid
+  missionId      String       @map("mission_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  type           String       @db.VarChar(80)
+  message        String       @db.VarChar(500)
+  readAt         DateTime?    @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client         Client       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  mission        Mission      @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  user           User?        @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([clientId, createdAt])
+  @@map("portal_notifications")
+}
+
+model ClosurePolicy {
+  id                String              @id @default(uuid()) @db.Uuid
+  organizationId    String              @map("organization_id") @db.Uuid
+  clientId          String              @map("client_id") @db.Uuid
+  stage             ClosureStage
+  version           Int                 @default(1)
+  status            ClosurePolicyStatus @default(DRAFT)
+  isActive          Boolean             @default(false) @map("is_active")
+  authoredByUserId  String              @map("authored_by_user_id") @db.Uuid
+  approvedByUserId  String?             @map("approved_by_user_id") @db.Uuid
+  approvedAt        DateTime?           @map("approved_at") @db.Timestamptz(6)
+  activatedByUserId String?             @map("activated_by_user_id") @db.Uuid
+  activatedAt       DateTime?           @map("activated_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  client              Client                       @relation(fields: [clientId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  activatedBy         User?                        @relation(fields: [activatedByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  authoredBy          User                         @relation("ClosurePolicyAuthor", fields: [authoredByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  approvedBy          User?                        @relation("ClosurePolicyApprover", fields: [approvedByUserId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  requirements        ClosureDocumentRequirement[]
+  operationalMissions Mission[]                    @relation("MissionOperationalClosurePolicy")
+  accountingMissions  Mission[]                    @relation("MissionAccountingClosurePolicy")
+
+  @@unique([clientId, stage, version])
+  @@index([organizationId, isActive])
+  @@map("closure_policies")
+}
+
+model RuleDefinition {
+  code                     String   @id @db.VarChar(120)
+  name                     String   @db.VarChar(160)
+  description              String
+  defaultThresholdMinutes  Int?     @map("default_threshold_minutes")
+  defaultQuantityTolerance Decimal? @map("default_quantity_tolerance") @db.Decimal(14, 3)
+  enabledByDefault         Boolean  @default(false) @map("enabled_by_default")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  configurations RuleConfiguration[]
+  exceptions     OperationalException[]
+
+  @@map("rule_definitions")
+}
+
+model RuleConfiguration {
+  id                String             @id @default(uuid()) @db.Uuid
+  organizationId    String             @map("organization_id") @db.Uuid
+  ruleCode          String             @map("rule_code") @db.VarChar(120)
+  scopeType         RuleScopeType      @map("scope_type")
+  scopeId           String             @map("scope_id") @db.Uuid
+  priority          Int                @default(0)
+  version           Int
+  isEnabled         Boolean            @default(true) @map("is_enabled")
+  thresholdMinutes  Int?               @map("threshold_minutes")
+  quantityTolerance Decimal?           @map("quantity_tolerance") @db.Decimal(14, 3)
+  severity          ExceptionSeverity?
+  isBlocking        Boolean            @default(false) @map("is_blocking")
+  ownerUserId       String?            @map("owner_user_id") @db.Uuid
+  ownerScopeType    ScopeType?         @map("owner_scope_type")
+  ownerScopeId      String?            @map("owner_scope_id") @db.Uuid
+  timeZone          String?            @map("time_zone") @db.VarChar(80)
+  workingCalendar   Json               @default("{\"mode\":\"CONTINUOUS_24_7\",\"operatingDays\":[\"MONDAY\",\"TUESDAY\",\"WEDNESDAY\",\"THURSDAY\",\"FRIDAY\",\"SATURDAY\",\"SUNDAY\"],\"pauseSlaOnWeekends\":false,\"pauseSlaOnOfficialHolidays\":false,\"holidayWorkClassification\":\"OVERTIME\"}") @map("working_calendar")
+  effectiveFrom     DateTime           @map("effective_from") @db.Timestamptz(6)
+  effectiveTo       DateTime?          @map("effective_to") @db.Timestamptz(6)
+  createdByUserId   String             @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  definition   RuleDefinition         @relation(fields: [ruleCode], references: [code], onDelete: Restrict)
+  owner        User?                  @relation("RuleConfigurationOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  createdBy    User                   @relation("RuleConfigurationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  exceptions   OperationalException[]
+
+  @@unique([organizationId, ruleCode, scopeType, scopeId, version])
+  @@index([organizationId, ruleCode, effectiveFrom, effectiveTo])
+  @@index([scopeType, scopeId])
+  @@map("rule_configurations")
+}
+
+model KpiDefinition {
+  code        String   @id @db.VarChar(120)
+  name        String   @db.VarChar(160)
+  description String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  configurations KpiConfiguration[]
+
+  @@map("kpi_definitions")
+}
+
+model KpiConfiguration {
+  id                   String        @id @default(uuid()) @db.Uuid
+  organizationId       String        @map("organization_id") @db.Uuid
+  kpiCode              String        @map("kpi_code") @db.VarChar(120)
+  scopeType            RuleScopeType @map("scope_type")
+  scopeId              String        @map("scope_id") @db.Uuid
+  version              Int
+  isEnabled            Boolean       @default(false) @map("is_enabled")
+  formula              Json?
+  eligibility          Json?
+  dataSources          Json?         @map("data_sources")
+  periodDefinition     Json?         @map("period_definition")
+  targets              Json?
+  targetPercent        Decimal       @default(90) @map("target_percent") @db.Decimal(5, 2)
+  roundingMode         String?       @map("rounding_mode") @db.VarChar(40)
+  decimalScale         Int?          @map("decimal_scale")
+  calculationFrequency String        @default("DAILY") @map("calculation_frequency") @db.VarChar(80)
+  timeZone             String?       @map("time_zone") @db.VarChar(80)
+  effectiveFrom        DateTime      @map("effective_from") @db.Timestamptz(6)
+  effectiveTo          DateTime?     @map("effective_to") @db.Timestamptz(6)
+  createdByUserId      String        @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  definition    KpiDefinition     @relation(fields: [kpiCode], references: [code], onDelete: Restrict)
+  createdBy     User              @relation("KpiConfigurationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  factSnapshots KpiFactSnapshot[]
+
+  @@unique([organizationId, kpiCode, scopeType, scopeId, version])
+  @@index([organizationId, kpiCode, effectiveFrom, effectiveTo])
+  @@index([scopeType, scopeId])
+  @@map("kpi_configurations")
+}
+
+model KpiFactSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  configurationId String   @map("configuration_id") @db.Uuid
+  idempotencyKey  String   @map("idempotency_key") @db.Uuid
+  periodDate      DateTime @map("period_date") @db.Date
+  timeZone        String   @map("time_zone") @db.VarChar(80)
+  sourceCutoffAt  DateTime @map("source_cutoff_at") @db.Timestamptz(6)
+  missionSetHash  String   @map("mission_set_hash") @db.Char(64)
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  configuration KpiConfiguration @relation(fields: [configurationId], references: [id], onDelete: Restrict)
+  createdBy     User             @relation("KpiFactSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  missionFacts  KpiMissionFact[]
+  results       KpiResult[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, periodDate])
+  @@index([configurationId, periodDate])
+  @@map("kpi_fact_snapshots")
+}
+
+model KpiMissionFact {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organizationId           String   @map("organization_id") @db.Uuid
+  snapshotId               String   @map("snapshot_id") @db.Uuid
+  missionId                String   @map("mission_id") @db.Uuid
+  clientId                 String   @map("client_id") @db.Uuid
+  contractId               String?  @map("contract_id") @db.Uuid
+  routeId                  String?  @map("route_id") @db.Uuid
+  warehouseId              String   @map("warehouse_id") @db.Uuid
+  carrierId                String?  @map("carrier_id") @db.Uuid
+  driverId                 String?  @map("driver_id") @db.Uuid
+  missionState             Json     @map("mission_state")
+  exceptionFacts           Json     @map("exception_facts")
+  externalDataAvailability Json     @map("external_data_availability")
+  capturedAt               DateTime @map("captured_at") @db.Timestamptz(6)
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  snapshot     KpiFactSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  mission      Mission         @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([snapshotId, missionId])
+  @@index([organizationId, clientId, capturedAt])
+  @@index([organizationId, driverId, capturedAt])
+  @@map("kpi_mission_facts")
+}
+
+model KpiResult {
+  id                   String          @id @default(uuid()) @db.Uuid
+  organizationId       String          @map("organization_id") @db.Uuid
+  snapshotId           String          @map("snapshot_id") @db.Uuid
+  periodType           KpiPeriodType   @map("period_type")
+  periodStart          DateTime        @map("period_start") @db.Date
+  periodEnd            DateTime        @map("period_end") @db.Date
+  timeZone             String          @map("time_zone") @db.VarChar(80)
+  calculationVersion   Int             @map("calculation_version")
+  status               KpiResultStatus @default(DRAFT)
+  score                Decimal?        @db.Decimal(6, 2)
+  targetPercent        Decimal         @default(90) @map("target_percent") @db.Decimal(5, 2)
+  eligibleMissionCount Int             @map("eligible_mission_count")
+  componentSummary     Json            @map("component_summary")
+  inputHash            String          @map("input_hash") @db.Char(64)
+  calculatedAt         DateTime        @map("calculated_at") @db.Timestamptz(6)
+  sourceCutoffAt       DateTime        @map("source_cutoff_at") @db.Timestamptz(6)
+  publishedAt          DateTime?       @map("published_at") @db.Timestamptz(6)
+  publishedByUserId    String?         @map("published_by_user_id") @db.Uuid
+  createdByUserId      String          @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  snapshot     KpiFactSnapshot    @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  publishedBy  User?              @relation("KpiResultPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict)
+  createdBy    User               @relation("KpiResultCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  missions     KpiMissionResult[]
+
+  @@unique([organizationId, snapshotId, periodType, calculationVersion])
+  @@index([organizationId, periodType, periodStart, periodEnd, status])
+  @@index([organizationId, publishedAt])
+  @@map("kpi_results")
+}
+
+model KpiMissionResult {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  resultId         String   @map("result_id") @db.Uuid
+  missionId        String   @map("mission_id") @db.Uuid
+  clientId         String   @map("client_id") @db.Uuid
+  carrierId        String?  @map("carrier_id") @db.Uuid
+  driverId         String?  @map("driver_id") @db.Uuid
+  score            Decimal? @db.Decimal(6, 2)
+  applicableWeight Decimal  @map("applicable_weight") @db.Decimal(6, 2)
+  targetMet        Boolean? @map("target_met")
+  components       Json
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  result       KpiResult    @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  mission      Mission      @relation(fields: [missionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([resultId, missionId])
+  @@index([organizationId, clientId, createdAt])
+  @@index([organizationId, carrierId, createdAt])
+  @@index([organizationId, driverId, createdAt])
+  @@map("kpi_mission_results")
+}
+
+model OperationalException {
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  missionId           String             @map("mission_id") @db.Uuid
+  stopId              String?            @map("stop_id") @db.Uuid
+  ruleCode            String             @map("rule_code") @db.VarChar(120)
+  ruleConfigurationId String?            @map("rule_configuration_id") @db.Uuid
+  activeKey           String?            @unique @map("active_key") @db.VarChar(300)
+  occurrenceKey       String             @map("occurrence_key") @db.VarChar(300)
+  status              ExceptionStatus    @default(OPEN)
+  severity            ExceptionSeverity?
+  isBlocking          Boolean            @default(false) @map("is_blocking")
+  ownerUserId         String?            @map("owner_user_id") @db.Uuid
+  ownerScopeType      ScopeType?         @map("owner_scope_type")
+  ownerScopeId        String?            @map("owner_scope_id") @db.Uuid
+  clientId            String             @map("client_id") @db.Uuid
+  routeId             String?            @map("route_id") @db.Uuid
+  warehouseId         String             @map("warehouse_id") @db.Uuid
+  carrierId           String?            @map("carrier_id") @db.Uuid
+  vehicleId           String?            @map("vehicle_id") @db.Uuid
+  driverId            String?            @map("driver_id") @db.Uuid
+  scheduledAt         DateTime?          @map("scheduled_at") @db.Timestamptz(6)
+  actualAt            DateTime?          @map("actual_at") @db.Timestamptz(6)
+  delayMinutes        Int?               @map("delay_minutes")
+  actualQuantity      Decimal?           @map("actual_quantity") @db.Decimal(14, 3)
+  toleranceQuantity   Decimal?           @map("tolerance_quantity") @db.Decimal(14, 3)
+  context             Json               @default("{}")
+  openedAt            DateTime           @default(now()) @map("opened_at") @db.Timestamptz(6)
+  lastDetectedAt      DateTime           @default(now()) @map("last_detected_at") @db.Timestamptz(6)
+  resolvedAt          DateTime?          @map("resolved_at") @db.Timestamptz(6)
+  resolutionNotes     String?            @map("resolution_notes") @db.VarChar(2000)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  mission           Mission             @relation(fields: [missionId], references: [id], onDelete: Restrict)
+  stop              MissionStop?        @relation(fields: [stopId], references: [id], onDelete: Restrict)
+  definition        RuleDefinition      @relation(fields: [ruleCode], references: [code], onDelete: Restrict)
+  ruleConfiguration RuleConfiguration?  @relation(fields: [ruleConfigurationId], references: [id], onDelete: Restrict)
+  route             OperationalRoute?   @relation(fields: [routeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  owner             User?               @relation("ExceptionOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  affectedStops     ExceptionStop[]
+  rootCauses        RootCause[]
+  decisions         Decision[]
+  alerts            Alert[]
+  evidence          ExceptionEvidence[]
+
+  @@index([organizationId, status, severity])
+  @@index([missionId, status])
+  @@index([routeId, status])
+  @@index([ruleCode, openedAt])
+  @@index([ownerUserId, status])
+  @@map("operational_exceptions")
+}
+
+model ExceptionStop {
+  exceptionId String @map("exception_id") @db.Uuid
+  stopId      String @map("stop_id") @db.Uuid
+
+  exception OperationalException @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  stop      MissionStop          @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@id([exceptionId, stopId])
+  @@map("exception_stops")
+}
+
+model ExceptionEvidence {
+  exceptionId String   @map("exception_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  purpose     String?  @db.VarChar(240)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  exception OperationalException @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  document  Document             @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@id([exceptionId, documentId])
+  @@map("exception_evidence")
+}
+
+model RootCause {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  exceptionId       String    @map("exception_id") @db.Uuid
+  category          String    @db.VarChar(120)
+  categoryId        String?   @map("category_id") @db.Uuid
+  description       String    @db.VarChar(2000)
+  confirmedByUserId String?   @map("confirmed_by_user_id") @db.Uuid
+  confirmedAt       DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exception    OperationalException @relation(fields: [exceptionId], references: [id], onDelete: Restrict)
+  confirmedBy  User?                @relation("RootCauseConfirmer", fields: [confirmedByUserId], references: [id], onDelete: Restrict)
+  taxonomy     RootCauseCategory?   @relation(fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([exceptionId, createdAt])
+  @@map("root_causes")
+}
+
+model RootCauseCategory {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  code           String    @db.VarChar(120)
+  nameEn         String    @map("name_en") @db.VarChar(160)
+  nameAr         String    @map("name_ar") @db.VarChar(160)
+  parentId       String?   @map("parent_id") @db.Uuid
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  retiredAt      DateTime? @map("retired_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parent       RootCauseCategory?  @relation("RootCauseHierarchy", fields: [parentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  children     RootCauseCategory[] @relation("RootCauseHierarchy")
+  rootCauses   RootCause[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive])
+  @@map("root_cause_categories")
+}
+
+model Decision {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  exceptionId     String   @map("exception_id") @db.Uuid
+  decisionText    String   @map("decision_text") @db.VarChar(4000)
+  decidedByUserId String   @map("decided_by_user_id") @db.Uuid
+  decidedAt       DateTime @default(now()) @map("decided_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exception    OperationalException @relation(fields: [exceptionId], references: [id], onDelete: Restrict)
+  decidedBy    User                 @relation("DecisionMaker", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  actions      CorrectiveAction[]
+
+  @@index([exceptionId, decidedAt])
+  @@map("decisions")
+}
+
+model CorrectiveAction {
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  decisionId        String       @map("decision_id") @db.Uuid
+  ownerUserId       String       @map("owner_user_id") @db.Uuid
+  actionText        String       @map("action_text") @db.VarChar(4000)
+  dueAt             DateTime?    @map("due_at") @db.Timestamptz(6)
+  status            ActionStatus @default(OPEN)
+  completedAt       DateTime?    @map("completed_at") @db.Timestamptz(6)
+  completedByUserId String?      @map("completed_by_user_id") @db.Uuid
+  completionNotes   String?      @map("completion_notes") @db.VarChar(2000)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  decision     Decision     @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  owner        User         @relation("ActionOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  completedBy  User?        @relation("ActionCompleter", fields: [completedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status, dueAt])
+  @@index([decisionId, status])
+  @@map("corrective_actions")
+}
+
+model Alert {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  exceptionId     String      @map("exception_id") @db.Uuid
+  userId          String?     @map("user_id") @db.Uuid
+  channel         String      @default("IN_APP") @db.VarChar(40)
+  status          AlertStatus @default(PENDING)
+  sentAt          DateTime?   @map("sent_at") @db.Timestamptz(6)
+  readAt          DateTime?   @map("read_at") @db.Timestamptz(6)
+  escalationDueAt DateTime    @map("escalation_due_at") @db.Timestamptz(6)
+  escalatedAt     DateTime?   @map("escalated_at") @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  exception        OperationalException   @relation(fields: [exceptionId], references: [id], onDelete: Restrict)
+  user             User?                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  deliveryAttempts AlertDeliveryAttempt[]
+  escalations      AlertEscalation[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([userId, status])
+  @@index([organizationId, escalationDueAt, escalatedAt])
+  @@map("alerts")
+}
+
+model AlertDeliveryAttempt {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  alertId        String               @map("alert_id") @db.Uuid
+  attemptNo      Int                  @map("attempt_no")
+  channel        String               @default("EMAIL") @db.VarChar(40)
+  outcome        AlertDeliveryOutcome
+  attemptedAt    DateTime             @map("attempted_at") @db.Timestamptz(6)
+  error          String?              @db.VarChar(2000)
+  nextAttemptAt  DateTime?            @map("next_attempt_at") @db.Timestamptz(6)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  alert        Alert        @relation(fields: [alertId], references: [id], onDelete: Restrict)
+
+  @@unique([alertId, attemptNo])
+  @@index([organizationId, nextAttemptAt])
+  @@map("alert_delivery_attempts")
+}
+
+model AlertEscalation {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  alertId         String   @map("alert_id") @db.Uuid
+  recipientUserId String   @map("recipient_user_id") @db.Uuid
+  escalatedAt     DateTime @map("escalated_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  alert        Alert        @relation(fields: [alertId], references: [id], onDelete: Restrict)
+  recipient    User         @relation(fields: [recipientUserId], references: [id], onDelete: Restrict)
+
+  @@unique([alertId, recipientUserId])
+  @@index([organizationId, escalatedAt])
+  @@map("alert_escalations")
+}
+
+model ClosureDocumentRequirement {
+  id           String                   @id @default(uuid()) @db.Uuid
+  policyId     String                   @map("policy_id") @db.Uuid
+  documentType DocumentType             @map("document_type")
+  scope        DocumentRequirementScope
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  policy ClosurePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, documentType, scope])
+  @@map("closure_document_requirements")
+}

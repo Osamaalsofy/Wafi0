@@ -1,0 +1,50 @@
+name: Runtime acceptance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wafi_os_test
+          POSTGRES_USER: wafi_test
+          POSTGRES_PASSWORD: wafi-test-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wafi_test -d wafi_os_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      NODE_ENV: test
+      API_PORT: 3001
+      DATABASE_URL: postgresql://wafi_test:wafi-test-ci-only@127.0.0.1:5432/wafi_os_test?schema=public
+      CORS_ORIGINS: http://localhost:3000
+      JWT_ACCESS_SECRET: runtime-acceptance-secret-32-characters
+      JWT_ACCESS_TTL_SECONDS: 900
+      REFRESH_TOKEN_TTL_DAYS: 30
+      RATE_LIMIT_TTL_MS: 60000
+      RATE_LIMIT_MAX: 120
+      DOCUMENT_STORAGE_LOCAL_PATH: ./var/test-documents
+      DOCUMENT_MAX_SIZE_BYTES: 10000000
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:runtime

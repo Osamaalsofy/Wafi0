@@ -1,0 +1,33 @@
+export const MISSION_STATUSES = [
+  'DRAFT',
+  'ASSIGNED',
+  'WAITING_FOR_VEHICLE',
+  'VEHICLE_ARRIVED',
+  'LOADING',
+  'LOADED',
+  'DEPARTED',
+  'IN_TRANSIT',
+  'AT_STOP',
+  'DELIVERING',
+  'DELIVERED',
+  'OPERATIONALLY_CLOSED',
+  'ACCOUNTING_READY',
+  'CLOSED',
+  'CANCELLED',
+] as const;
+
+export const MISSION_EVENT_TYPES = {
+  created: 'MISSION_CREATED',
+  updated: 'MISSION_UPDATED',
+  assignmentChanged: 'MISSION_ASSIGNMENT_CHANGED',
+  statusChanged: 'MISSION_STATUS_CHANGED',
+  stopAdded: 'MISSION_STOP_ADDED',
+  stopUpdated: 'MISSION_STOP_UPDATED',
+  stopArrived: 'MISSION_STOP_ARRIVED',
+  stopUnloadingStarted: 'MISSION_STOP_UNLOADING_STARTED',
+  stopCompleted: 'MISSION_STOP_COMPLETED',
+  routeDeviationDetected: 'MISSION_ROUTE_DEVIATION_DETECTED',
+  routeDeviationRecovered: 'MISSION_ROUTE_DEVIATION_RECOVERED',
+  waybillIssued: 'WAYBILL_ISSUED',
+  waybillShared: 'WAYBILL_SHARED',
+} as const;

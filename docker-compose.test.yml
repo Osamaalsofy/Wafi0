@@ -1,0 +1,17 @@
+services:
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: wafi_os_test
+      POSTGRES_USER: wafi_test
+      POSTGRES_PASSWORD: wafi-test-local-only
+    ports:
+      - '${TEST_POSTGRES_PORT:-55432}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wafi_test -d wafi_os_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 3s

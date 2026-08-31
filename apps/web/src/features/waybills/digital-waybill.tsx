@@ -1,0 +1,46 @@
+'use client';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import QRCode from 'qrcode';
+import { getWaybill, issueWaybill, shareWaybill } from '../../lib/api-client';
+import type { DigitalWaybill } from './types';
+
+const show = (value: string | null | undefined) => value || '—';
+const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value)) : '—';
+const formatTime = (value: string | null) => value ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) : '—';
+
+export function DigitalWaybillView({ accessToken, missionId, canManage, onClose }: { accessToken: string; missionId: string; canManage: boolean; onClose: () => void }) {
+  const [waybill, setWaybill] = useState<DigitalWaybill>();
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string>();
+  useEffect(() => { const controller = new AbortController(); void getWaybill(accessToken, missionId, controller.signal).then(setWaybill).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Unable to load waybill')); return () => controller.abort(); }, [accessToken, missionId]);
+  function printWaybill() { if (!waybill) return; const previous = document.title; document.title = `WAFI-Waybill-${waybill.waybillNumber}`; window.print(); document.title = previous; }
+  async function issue() { setBusy(true); setError(undefined); try { setWaybill(await issueWaybill(accessToken, missionId)); setNotice('Waybill issued. The historical snapshot and QR verification are now locked.'); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to issue waybill'); } finally { setBusy(false); } }
+  async function share(target: 'DRIVER' | 'CLIENT') { setBusy(true); try { await shareWaybill(accessToken, missionId, target); setNotice(target === 'DRIVER' ? 'Assigned driver can access this waybill.' : 'Authorized client users can access this waybill.'); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to share waybill'); } finally { setBusy(false); } }
+  return <div className="waybill-overlay" role="dialog" aria-modal="true" aria-label="Digital waybill">
+    <div className="waybill-toolbar no-print"><button onClick={onClose}>Close / إغلاق</button><span className={`waybill-state waybill-${waybill?.status.toLowerCase()}`}>{waybill?.status ?? 'LOADING'}</span><button disabled={!waybill} onClick={printWaybill}>Print / طباعة</button><button disabled={!waybill} onClick={printWaybill}>Download PDF / تنزيل PDF</button>{canManage && waybill?.status === 'DRAFT' ? <button className="primary-button" disabled={busy} onClick={() => void issue()}>Issue / إصدار</button> : null}{canManage && waybill?.status === 'ISSUED' ? <><button disabled={busy} onClick={() => void share('DRIVER')}>Send to driver</button><button disabled={busy} onClick={() => void share('CLIENT')}>Share with client</button></> : null}</div>
+    {error ? <p className="waybill-message error-state no-print">{error}</p> : null}{notice ? <p className="waybill-message no-print">{notice}</p> : null}
+    {!waybill ? <div className="state-panel">Loading waybill…</div> : <WaybillPaper value={waybill} />}
+  </div>;
+}
+
+export function WaybillPaper({ value: w }: { value: DigitalWaybill }) {
+  const [qr, setQr] = useState<{ token: string; dataUrl: string }>();
+  const qrDataUrl = qr?.token === w.verificationToken ? qr.dataUrl : undefined;
+  useEffect(() => { if (!w.verificationToken || typeof window === 'undefined') return; const token = w.verificationToken; const verificationUrl = `${window.location.origin}/waybill/verify/${token}`; void QRCode.toDataURL(verificationUrl, { errorCorrectionLevel: 'M', margin: 1, width: 220, color: { dark: '#111111', light: '#ffffff' } }).then((dataUrl) => setQr({ token, dataUrl })); }, [w.verificationToken]);
+  return <article className="waybill-paper waybill-approved" dir="ltr">
+    <header className="waybill-approved-head"><div className="waybill-approved-logo"><Image src="/media/wafi-arabia-waybill-logo.png" alt="WAFI Arabia" width={300} height={135} priority /></div><div className="waybill-approved-title"><strong dir="rtl">بوليصة شحن</strong><h1>Waybill Consignment Note</h1><i /></div><div className="waybill-company" dir="rtl"><strong>شركة وافي العربية للخدمات اللوجستية</strong><span>سجل تجاري: 1010833066</span><span>VAT: 310538070200003</span></div></header>
+    <section className="waybill-identity-row"><InfoCard eyebrow="التاريخ" label="Date" value={formatDate(w.date)} /><div className="waybill-number-card"><div><span dir="rtl">رقم البوليصة</span><small>Policy / Waybill No.</small><strong>{w.waybillNumber}</strong></div><div className="waybill-qr">{qrDataUrl ? <Image src={qrDataUrl} alt={`QR verification for ${w.waybillNumber}`} width={220} height={220} unoptimized /> : <span>QR<br />ISSUED</span>}</div></div><InfoCard eyebrow="نسخة" label="Copy" value="Original" /></section>
+    <section className="waybill-approved-route"><ApprovedField ar="نوع السيارة / الوجهة" en="Vehicle / Dest." value={[w.vehicleType, w.city].filter(Boolean).join(' · ')} /><ApprovedField ar="المرسل إليه" en="To Consignee" value={w.consignee} subvalue={w.destinationAddress} /><ApprovedField ar="المصدر" en="Source / DC" value={w.source} subvalue={w.sourceAddress} /><ApprovedField ar="السادة" en="M / S" value={w.client} subvalue={w.carrier} /></section>
+    <section className="waybill-approved-driver"><div className="waybill-section-title"><strong dir="rtl">بيانات السائق والمركبة</strong><span>Driver &amp; Vehicle Information</span></div><div className="waybill-owner-declaration"><h2 dir="rtl">إقرار صاحب السيارة أو من ينوب عنه</h2><p dir="rtl">أقر أنا صاحب السيارة الموضح بياناته أعلاه بأنني مسؤول مسؤولية كاملة عن البضاعة التي استلمتها.</p><p>I, the owner of the vehicle whose details are stated above, acknowledge that I am fully responsible for the cargo that I have received.</p></div><div className="waybill-approved-driver-fields"><ApprovedField ar="اسم السائق" en="Driver Name" value={w.driverName} /><ApprovedField ar="رقم الهوية" en="ID Number" value={w.driverNationalId} /><ApprovedField ar="رقم السيارة" en="Vehicle No." value={w.vehicleNumber} /><ApprovedField ar="رقم جوال السائق" en="Driver Phone" value={w.driverPhone} /><ApprovedField ar="الأجرة" en="Freight Value" value={w.freightValue} /><ApprovedField ar="نوع البضاعة" en="Type of Goods" value={w.typeOfGoods} /></div></section>
+    <section className="waybill-approved-legal"><p>{w.declaration.en}</p><p dir="rtl">{w.declaration.ar}</p></section>
+    <section className="waybill-approved-signatures"><ApprovedSignature ar="توقيع الشاحن" en="Shipper Signature" /><ApprovedSignature ar="توقيع السائق" en="Driver Signature" /><ApprovedSignature ar="أعدت من قبل" en="Prepared By" /></section>
+    <section className="waybill-approved-bottom"><div className="waybill-approved-notes"><h2>ملاحظات <span>Notes</span></h2><p>{show(w.notes)}</p></div><div className="waybill-approved-receipt"><h2>سند استلام <span>Receipt</span></h2><p dir="rtl">استلمت البضاعة المدونة أعلاه بحالة جيدة وبدون ملاحظات</p><p>Received the above cargo container in good condition while the seal intact</p><dl><div><dt>Receiver / المستلم</dt><dd>{show(w.receipt.receiverName)}</dd></div><div><dt>Name / الاسم</dt><dd>....................</dd></div><div><dt>Signature / التوقيع</dt><dd>....................</dd></div><div><dt>Stamps / الختم</dt><dd>....................</dd></div></dl></div><div className="waybill-approved-times"><header><span>التاريخ<br/><small>Date</small></span><span>الزمن<br/><small>Time</small></span><span /></header>{([['وصول','Arrival',w.times.arrival],['تحميل','Loaded',w.times.loaded],['خروج','Exit',w.times.exit],['توقف','Breaks',w.times.breaks]] as const).map(([ar,en,value])=><div key={en}><span>{formatDate(value)}</span><span>{formatTime(value)}</span><strong dir="rtl">{ar}<small>{en}</small></strong></div>)}</div></section>
+    <footer className="waybill-approved-footer"><div className="waybill-insurance"><strong>{w.insuranceNote.en}</strong><strong dir="rtl">{w.insuranceNote.ar}</strong></div><div className="waybill-contact"><span>Address: Jeddah - Al Jawhara</span><span>Tel: 0536587002</span><span>info@wafiarabia.com</span></div></footer>
+  </article>;
+}
+
+function InfoCard({ eyebrow, label, value }: { eyebrow: string; label: string; value: string }) { return <div className="waybill-info-card"><strong dir="rtl">{eyebrow}</strong><span>{label}</span><b>{value}</b></div>; }
+function ApprovedField({ ar, en, value, subvalue }: { ar: string; en: string; value: string | null | undefined; subvalue?: string | null }) { return <div className="waybill-approved-field"><header><strong dir="rtl">{ar}</strong><span>{en}</span></header><div><b>{show(value)}</b>{subvalue ? <small>{subvalue}</small> : null}</div></div>; }
+function ApprovedSignature({ ar, en }: { ar: string; en: string }) { return <div><h2 dir="rtl">{ar}<span>{en}</span></h2><i/><p>Name &nbsp; ............................</p><p>Date &nbsp; ....... / ....... / 20........</p></div>; }

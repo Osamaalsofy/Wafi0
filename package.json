@@ -1,0 +1,32 @@
+{
+  "name": "wafi-os",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.16.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @wafi/api --filter @wafi/web dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @wafi/api prisma:generate",
+    "db:migrate": "pnpm --filter @wafi/api prisma:migrate",
+    "db:deploy": "pnpm --filter @wafi/api prisma:deploy",
+    "db:validate": "pnpm --filter @wafi/api prisma:validate",
+    "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait postgres-test",
+    "test:db:down": "docker compose -f docker-compose.test.yml down",
+    "test:runtime": "./scripts/runtime-acceptance.sh",
+    "test:runtime:local": "./scripts/runtime-acceptance-local.sh",
+    "test:production:smoke": "./scripts/production-container-smoke.sh",
+    "bootstrap:identity": "pnpm --filter @wafi/api bootstrap:identity"
+  },
+  "devDependencies": {
+    "prettier": "latest",
+    "prettier-plugin-prisma": "latest"
+  }
+}
