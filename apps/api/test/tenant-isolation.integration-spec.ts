@@ -250,6 +250,21 @@ describe('tenant isolation and relational integrity', () => {
     await prisma.missionEvent.deleteMany({
       where: { organizationId: { in: [organizationAId, organizationBId] } },
     });
+    await prisma.portalNotification.deleteMany({
+      where: { organizationId: { in: [organizationAId, organizationBId] } },
+    });
+    await prisma.supportMessage.deleteMany({
+      where: { ticket: { organizationId: { in: [organizationAId, organizationBId] } } },
+    });
+    await prisma.supportAssignment.deleteMany({
+      where: { ticket: { organizationId: { in: [organizationAId, organizationBId] } } },
+    });
+    await prisma.supportTicket.deleteMany({
+      where: { organizationId: { in: [organizationAId, organizationBId] } },
+    });
+    await prisma.missionAssignment.deleteMany({
+      where: { organizationId: { in: [organizationAId, organizationBId] } },
+    });
     await prisma.auditLog.deleteMany({
       where: { organizationId: { in: [organizationAId, organizationBId] } },
     });
@@ -302,7 +317,15 @@ describe('tenant isolation and relational integrity', () => {
     organizationId: string,
     userId: string = randomUUID(),
   ): AuthenticatedPrincipal {
-    return { userId, organizationId, email: 'test@example.com', grants: [] };
+    return {
+      userId,
+      organizationId,
+      email: 'test@example.com',
+      grants: [
+        { permission: 'control_tower.read', scopeType: 'ORGANIZATION', scopeId: organizationId },
+        { permission: 'document.read', scopeType: 'ORGANIZATION', scopeId: organizationId },
+      ],
+    };
   }
 
   it('returns only clients belonging to the authenticated organization', async () => {
