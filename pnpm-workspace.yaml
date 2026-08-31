@@ -6,6 +6,7 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   sharp: true
+  '@parcel/watcher': false
   '@scarf/scarf': false
   unrs-resolver: false
   msgpackr-extract: false
