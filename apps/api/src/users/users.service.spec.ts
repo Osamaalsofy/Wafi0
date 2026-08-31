@@ -37,7 +37,7 @@ describe('UsersService', () => {
       userId: 'portal-user', roleId: 'role-id', scopeType: 'CLIENT', scopeId: clientId,
     } });
     expect(transactionClient.role.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ code: 'CLIENT_PORTAL_USER' }),
+      create: expect.objectContaining({ code: 'CLIENT_PORTAL_USER' }) as Record<string, unknown>,
     }));
   });
 
